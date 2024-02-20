@@ -1,0 +1,412 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# from https://mran.revolutionanalytics.com/web/packages/checkpoint/vignettes/using-checkpoint-with-knitr.html
+# if you don't need a package, remove it from here (commenting is probably not sufficient)
+cat("
+install.packages('lintr')
+library(rstudioapi)
+library(tidyverse) # ggplot2, dplyr, tidyr, readr, purrr, tibble
+library(lintr) # code linting
+library(sf) # spatial data handling
+library(raster) # raster handling (needed for relief)
+library(viridis) # viridis color scale
+library(cowplot) # stack ggplots
+library(rmarkdown)",
+file = "manifest.R")
+```
+
+
+```{r}
+# if checkpoint is not yet installed, install it (for people using this
+# system for the first time)
+if (!require(checkpoint)) {
+  if (!require(devtools)) {
+    install.packages("devtools", repos = "http://cran.us.r-project.org")
+    require(devtools)
+  }
+  devtools::install_github("RevolutionAnalytics/checkpoint",
+                           ref = "v0.3.2", # could be adapted later,
+                           # as of now (beginning of July 2017
+                           # this is the current release on CRAN)
+                           repos = "http://cran.us.r-project.org")
+  require(checkpoint)
+}
+# nolint start
+if (!dir.exists("~/.checkpoint")) {
+  dir.create("~/.checkpoint")
+}
+# nolint end
+package_date <- '2020-08-24'
+# install packages for the specified CRAN snapshot date
+checkpoint(snapshotDate = package_date, verbose = T, scanForPackages = T, use.knitr = F)
+rm(package_date)
+```
+
+
+```{r}
+source("manifest.R")
+unlink("manifest.R")
+sessionInfo()
+```
+
+```{r}
+library(sf)
+library(raster)
+library(sp)
+# read cantonal borders
+canton_geo <- read_sf("../../COVID19/input/canton_ge.shp")
+
+# read country borders
+country_geo <- read_sf("../../COVID19/input/canton_ge.shp")
+
+# read lakes
+lake_geo <- read_sf("../../COVID19/input/lake_ge.shp")
+
+# read productive area (2324 municipalities)
+municipality_prod_geo <- read_sf("../Data/Specchio Data/df_giracs_and_specchio_ha.geojson")
+```
+```{r}
+# read in raster of relief
+relief <- raster("../../COVID19/input/02-relief-ascii.asc") %>%
+  # hide relief outside of Switzerland by masking with country borders
+  mask(country_geo) %>%
+  as("SpatialPixelsDataFrame") %>%
+  as.data.frame() %>%
+  rename(value = X02.relief.ascii)
+
+# clean up
+rm(country_geo)
+```
+
+```{r}
+theme_map <- function(...) {
+  theme_minimal() +
+  theme(
+    text = element_text(
+                        color = "#22211d"),
+    # remove all axes
+    axis.line = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank(),
+    # add a subtle grid
+    #panel.grid.major = element_line(color = "#dbdbd9", size = 0.2),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # background colors
+    #plot.background = element_rect(fill = "#f5f5f2",
+    #                               color = NA),
+    #panel.background = element_rect(fill = "#f5f5f2",
+    #                                color = NA),
+    #legend.background = element_rect(fill = "#f5f5f2",
+    #                                 color = NA),
+    # borders and margins
+    plot.margin = unit(c(.5, .5, .2, .5), "cm"),
+    panel.border = element_blank(),
+    panel.spacing = unit(c(-.1, 0.2, .2, 0.2), "cm"),
+    # titles
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 9, hjust = 0,
+                               color = "#22211d"),
+    plot.title = element_text(size = 15, hjust = 0.5,
+                              color = "#22211d"),
+    plot.subtitle = element_text(size = 10, hjust = 0.5,
+                                 color = "#22211d",
+                                 margin = margin(b = -0.1,
+                                                 t = -0.1,
+                                                 l = 2,
+                                                 unit = "cm"),
+                                 debug = F),
+    # captions
+    plot.caption = element_text(size = 7,
+                                hjust = .5,
+                                margin = margin(t = 0.2,
+                                                b = 0,
+                                                unit = "cm"),
+                                color = "#939184"),
+    ...
+  )
+}
+```
+```{r}
+# define number of classes
+no_classes <- 3
+
+# extract quantiles
+quantiles <- municipality_prod_geo %>%
+  pull(index_socio_pca) %>%
+  quantile(probs = seq(0, 1, length.out = no_classes + 1)) %>%
+  as.vector() # to remove names of quantiles, so idx below is numeric
+
+# here we create custom labels
+labels <- imap_chr(quantiles, function(., idx){
+  return(paste0(round(quantiles[idx], 3),
+                             " – ",
+                             round(quantiles[idx + 1], 3)))
+})
+# we need to remove the last label 
+# because that would be something like "478k - NA"
+labels <- labels[1:length(labels) - 1]
+
+# here we actually create a new 
+# variable on the dataset with the quantiles
+municipality_prod_geo$mean_quantiles <- cut(municipality_prod_geo$index_socio_pca,
+                               breaks = quantiles,
+                               labels = labels,
+                               include.lowest = T)
+
+ggplot(
+  # define main data source
+  data = municipality_prod_geo
+) +
+  # use the "alpha hack" (as the "fill" aesthetic is already taken)
+  scale_alpha(name = "",
+              range = c(0.6, 0),
+              guide = F) + # suppress legend
+  # add main fill aesthetic
+  # use thin white stroke for municipality borders
+  geom_sf(
+    mapping = aes(
+      fill = mean_quantiles
+      ),
+    color = "white",
+    size = 0.0001
+  ) +
+  # use the Viridis color scale
+  scale_fill_viridis(
+    option = "magma",
+    name = "Deprivation\nindex",
+    alpha = 0.8, # make fill a bit brighter
+    begin = 0.1, # this option seems to be new (compared to 2016):
+    # with this we can truncate the
+    # color scale, so that extreme colors (very dark and very bright) are not
+    # used, which makes the map a bit more aesthetic
+    end = 0.9,
+    discrete = T, # discrete classes, thus guide_legend instead of _colorbar
+    direction = 1, # dark is lowest, yellow is highest
+    guide = guide_legend(
+     keyheight = unit(5, units = "mm"),
+     title.position = "top",
+     reverse = T # display highest income on top
+  )) +
+  # use thicker white stroke for cantonal borders
+  geom_sf(
+    data = canton_geo,
+    fill = "transparent",
+    color = "white",
+    size = 0.5
+  ) +
+  # draw lakes in light blue
+  geom_sf(
+    data = lake_geo,
+    fill = "#D6F1FF",
+    color = "transparent"
+  ) +
+  # add titles
+  labs(x = NULL,
+         y = NULL,
+         title = "Geneva's deprivation",
+         subtitle = "Deprivation index by hectare in the canton of Geneva",
+         caption = '') +
+  # add theme
+  theme_map()
+```
+
+```{r}
+ggsave('geneva_deprivation.png', plot = last_plot(), device = NULL, path = NULL,
+  scale = 1, width = NA, height = NA,
+  dpi = 800, limitsize = TRUE)
+```
+```{r}
+# create 3 buckets for survival
+quantiles_survival <- municipality_prod_geo %>%
+  pull(cumul_LISA) %>%
+  quantile(probs = seq(0, 1, length.out = 4))
+# create 3 buckets for deprivation
+quantiles_depriv <- municipality_prod_geo %>%
+  pull(index_socio_pca) %>%
+  quantile(probs = seq(0, 1, length.out = 4))
+
+# create color scale that encodes two variables
+# red for gini and blue for mean income
+# the special notation with gather is due to readibility reasons
+bivariate_color_scale <- tibble(
+  "3 - 3" = "#3F2949", # high inequality, high income
+  "2 - 3" = "#435786",
+  "1 - 3" = "#4885C1", #blue low inequality, high income
+  "3 - 2" = "#77324C",
+  "2 - 2" = "#806A8A", # medium inequality, medium income
+  "1 - 2" = "#89A1C8",
+  "3 - 1" = "#AE3A4E", #red high inequality, low income
+  "2 - 1" = "#BC7C8F",
+  "1 - 1" = "#CABED0" # low inequality, low income
+) %>%
+  gather("group", "fill")
+```
+
+```{r}
+# cut into groups defined above and join fill
+library(dplyr)
+library(tidyverse)
+municipality_prod_geo <- municipality_prod_geo %>%
+  mutate(
+    group = paste(cat_giracs, "-", cat_specchio)
+  ) %>%
+  # Join the actual hex values per "group"
+  # so each municipality knows its hex value based on the categories
+  left_join(bivariate_color_scale, by = "group")
+```
+
+```{r}
+annotations <- tibble(
+  label = c(
+    "Grey areas mean\nlow cluster lifetime and\nlow deprivation",
+    "Blue areas mean\nlow cluster lifetime and\nhigh deprivation",
+    "Violet areas mean\nhigh cluster lifetime and\nhigh deprivation",
+    "Red areas mean\nhigh cluster lifetime and\nlow deprivation"
+  ),
+  arrow_from = c(
+    "509000,125000", # grey
+    "500500,129000", # blue
+    "491950,116200", # violet
+    "504000,114000" # red
+  ),
+  arrow_to = c(
+    "506800,124500", # grey
+    "501560,127130", # blue
+    "496441,118345", # violet
+    "501003,115140" # red
+  ),
+  curvature = c(
+    0.2, # grey
+    0.1, # blue
+    -0.1, # violet
+    -0.2 # red
+  ),
+  nudge = c(
+    "400,0", # grey
+    "-200,400", # blue
+    "0,-400", # violet
+    "400,0" # red
+  ),
+  just = c(
+    "0,1", # grey
+    "1,0", # blue
+    "0.5,1", # violet
+    "0,1" # red
+  )
+) %>%
+  separate(arrow_from, into = c("x", "y")) %>%
+  separate(arrow_to, into = c("xend", "yend")) %>%
+  separate(nudge, into = c("nudge_x", "nudge_y"), sep = "\\,") %>%
+  separate(just, into = c("hjust", "vjust"), sep = "\\,")
+```
+```{r}
+library(cowplot)
+install.packages('ggsn')
+library(ggsn)
+library(purrr)
+```
+
+```{r}
+#Now that the annotations data frame is ready, we can do the following:
+#Specify a basic map ggplot2 object, following the same order as in the univariate case (we use scale_fill_identity() instead of the Viridis color scale).
+#We then loop over each row of the annotations data frame and add each annotation (geom_curve() and geom_text() calls) to the map object one by one.
+#Note that we need to manually specify the font family for the labels again.
+map <- ggplot(
+  # use the same dataset as before
+  data = municipality_prod_geo
+  ) +
+  # first: draw the relief
+  # use the "alpha hack" (as the "fill" aesthetic is already taken)
+  scale_alpha(name = "",
+              range = c(0.6, 0),
+              guide = F) + # suppress legend
+  # color municipalities according to their gini / income combination
+  geom_sf(
+    aes(
+      fill = fill
+    ),
+    # use thin white stroke for municipalities
+    color = "white",
+    size = 0.0001
+  ) +
+  # as the sf object municipality_prod_geo has a column with name "fill" that
+  # contains the literal color as hex code for each municipality, we can use
+  # scale_fill_identity here
+  scale_fill_identity() +
+  # use thicker white stroke for cantons
+  geom_sf(
+    data = canton_geo,
+    fill = "transparent",
+    color = "grey",
+    size = 0.5
+  ) +
+  # draw lakes in light blue
+  geom_sf(
+    data = lake_geo,
+    fill = "#D6F1FF",
+    color = "transparent"
+  ) +
+  # add titles
+  labs(x = NULL,
+         y = NULL) +
+#        title = "Switzerland's regional income (in-)equality",
+#         subtitle = paste0("Average yearly income and income",
+#                           " (in-)equality in Swiss municipalities, 2015")) 
+  geom_text(aes(
+          x = 504400,
+          y = 127000,
+          label = 'Lake Geneva'), size = 2, color = '#6baed6')+
+  # add the theme
+    north(municipality_prod_geo) +
+    scalebar(municipality_prod_geo, dist = 2, dist_unit = "km",st.size = 2, border.size =  0.5, 
+             transform = FALSE, model = "CH1903")+
+  theme_map()
+
+# add annotations one by one by walking over the annotations data frame
+# this is necessary because we cannot define nudge_x, nudge_y and curvature
+# in the aes in a data-driven way like as with x and y, for example
+
+legend
+
+# separate the groups
+bivariate_color_scale %<>%
+  separate(group, into = c("cat_specchio", "cat_giracs"), sep = " - ") %>%
+  mutate(cat_specchio = as.integer(cat_specchio),
+         cat_giracs = as.integer(cat_giracs))
+
+legend <- ggplot() +
+  geom_tile(
+    data = bivariate_color_scale,
+    mapping = aes(
+      x = cat_specchio,
+      y = cat_giracs,
+      fill = fill)
+  ) +
+  scale_fill_identity() +
+  labs(x = "Getis Specchio",
+       y = "Getis GIRACS") +
+  theme_map() +
+  # make font small enough
+  theme(
+    axis.title = element_text(size = 6)
+  ) +
+  # quadratic tiles
+  coord_fixed()
+ggdraw() +
+  draw_plot(map, 0, 0, 1, 1) +
+  draw_plot(legend, 0.12, 0.7, 0.25, 0.25)
+
+```
+```{r}
+ggsave('Bivariate_cumulLISA_deprivation_ses.png', plot = last_plot(), device = NULL, path = NULL,
+  scale = 1, width = 8, height = 6,
+  dpi = 100, limitsize = TRUE)
+```
+
+

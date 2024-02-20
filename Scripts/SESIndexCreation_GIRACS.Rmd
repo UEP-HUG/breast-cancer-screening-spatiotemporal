@@ -1,0 +1,340 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+install.packages('arrow')
+install.packages('FactoMineR')
+install.packages("corrplot")
+install.packages("factoextra")
+```
+
+```{r}
+library(arrow)
+library(FactoMineR)
+library(tidyverse)
+library(dplyr)
+library("corrplot")
+library("factoextra")
+```
+
+```{r}
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/ClassifHC.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/ClassifInt.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/ClassifQuant.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/plot.SesClassif.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/plot.SesIndex.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/print.SesClassif.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/print.SesIndex.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/SelectVar.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/SesClassif.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/SesIndex.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/SesReport.R")
+source("/Users/david/Dropbox/PhD/GitHub/GeoSoc/SesIndexCreatoR/R/SesStep1.R")
+```
+
+```{r}
+reli_na <- read_feather('./microgis_data_depriv.feather')
+
+```
+```{r}
+reli_na <- reli_na %>% 
+  mutate(
+    prp_p0004=(p0004*100)/ptot,
+    prp_p0509=(p0509*100)/ptot,
+    prp_p1014=(p1014*100)/ptot,
+    prp_p1519=(p1519*100)/ptot,
+    prp_p2024=(p2024*100)/ptot,
+    prp_p2529=(p2529*100)/ptot,
+    prp_p3034=(p3034*100)/ptot,
+    prp_p3539=(p3539*100)/ptot,
+    prp_p4044=(p4044*100)/ptot,
+    prp_p4549=(p4549*100)/ptot,
+    prp_p5054=(p5054*100)/ptot,
+    prp_p5559=(p5559*100)/ptot,
+    prp_p6064=(p6064*100)/ptot,
+    prp_p6569=(p6569*100)/ptot,
+    prp_p7074=(p7074*100)/ptot,
+    prp_p7579=(p7579*100)/ptot,
+    prp_p8084=(p8084*100)/ptot,
+    prp_p8589=(p8589*100)/ptot,
+    prp_p90m=(p90m*100)/ptot,
+    prp_pm=(pm*100)/ptot,
+    prp_pf=(pf*100)/ptot,
+    prp_ptab=(ptab*100)/ptot,
+    prp_ptsb=(ptsb*100)/ptot,
+    prp_pts01y=(pts01y*100)/ptot,
+    prp_pts14y=(pts14y*100)/ptot,
+    prp_pts59y=(pts59y*100)/ptot,
+    prp_pts10my=(pts10my*100)/ptot,
+    prp_pnnon=(pnnon*100)/ptot,
+    prp_pnch=(pnch*100)/ptot,
+    prp_pnfor=(pnfor*100)/ptot,
+    prp_hhfam=(hhfam*100)/hh,
+    prp_hhpriv=(hhpriv*100)/hh,
+    prp_hhp1p=(hhp1p*100)/hhpriv,
+    prp_hhp2p=(hhp2p*100)/hhpriv,
+    prp_hhp3p=(hhp3p*100)/hhpriv,
+    prp_hhp4p=(hhp4p*100)/hhpriv,
+    prp_hhp5p=(hhp5p*100)/hhpriv,
+    prp_hhp6mp=(hhp6mp*100)/hhpriv,
+    prp_phhpriv=(phhpriv*100)/ptot,
+    prp_ad=(ad*100)/ptot,
+    prp_adm=(adm*100)/ad,
+    prp_adf=(adf*100)/ad,
+    prp_ado=(ado*100)/ad,
+    prp_adom=(adom*100)/ado,
+    prp_adof=(adof*100)/ado,
+    prp_adfo=(adfo*100)/ado,
+    prp_adfom=(adfom*100)/adfo,
+    prp_adfof=(adfof*100)/adfo,
+    prp_adpo=(adpo*100)/ado,
+    prp_adpom=(adpom*100)/adpo,
+    prp_adpof=(adpof*100)/adpo,
+    prp_adune=(adune*100)/ad,
+    prp_adunem=(adunem*100)/adune,
+    prp_adunef=(adunef*100)/adune,
+    ptot_nad=nadfm+nadho+nadret+naddis+nadoth,
+    prp_nadfm=(nadfm*100)/ptot_nad,
+    prp_nadfmm=(nadfmm*100)/nadfm,
+    prp_nadfmf=(nadfmf*100)/nadfm,
+    prp_nadho=(nadho*100)/ptot_nad,
+    prp_nadhom=(nadhom*100)/nadho,
+    prp_nadhof=(nadhof*100)/nadho,
+    prp_nadret=(nadret*100)/ptot_nad,
+    prp_nadretm=(nadretm*100)/nadret,
+    prp_nadretf=(nadretf*100)/nadret,
+    prp_naddis=(naddis*100)/ptot_nad,
+    prp_naddism=(naddism*100)/naddis,
+    prp_naddisf=(naddisf*100)/naddis,
+    prp_nadoth=(nadoth*100)/ptot_nad,
+    prp_nadothm=(nadothm*100)/nadoth,
+    prp_nadothf=(nadothf*100)/nadoth,
+    prp_adh0105=(adh0105*100)/ado,
+    prp_adh0619=(adh0619*100)/ado,
+    prp_adh2034=(adh2034*100)/ado,
+    prp_adh3539=(adh3539*100)/ado,
+    prp_adh4044=(adh4044*100)/ado,
+    prp_adh4549=(adh4549*100)/ado,
+    prp_adh50m=(adh50m*100)/ado,
+    prp_adcprod=(adcprod*100)/ado,
+    prp_adcserv=(adcserv*100)/ado,
+    prp_adccare=(adccare*100)/ado,
+    prp_adcprof=(adcprof*100)/ado,
+    prp_adcedu=(adcedu*100)/ado,
+    prp_adccrea=(adccrea*100)/ado,
+    prp_ad3prim=(ad3prim*100)/ado,
+    prp_ad3sec=(ad3sec*100)/ado,
+    prp_ad3tert=(ad3tert*100)/ado,
+    prp_pfnone=(pfnone*100)/ptot,
+    prp_pfobl=(pfobl*100)/ptot,
+    prp_pfgen=(pfgen*100)/ptot,
+    prp_pfprof=(pfprof*100)/ptot,
+    prp_pfmat=(pfmat*100)/ptot,
+    prp_pfprsf=(pfprsf*100)/ptot,
+    prp_pfprss=(pfprss*100)/ptot,
+    prp_pfbac=(pfbac*100)/ptot,
+    prp_pfmas=(pfmas*100)/ptot,
+    prp_pfphd=(pfphd*100)/ptot,
+    prp_pfs=(pfs*100)/ptot,
+    prp_pfpres=(pfpres*100)/ptot,
+    ptot_plocl=plocfra+plocchoth+plocoth,
+    prp_plocfra=(plocfra*100)/ptot_plocl,
+    prp_plocchoth=(plocchoth*100)/ptot_plocl,
+    prp_plocoth=(plocoth*100)/ptot_plocl
+  )
+```
+```{r}
+reli_na[is.na(reli_na)] <- 0
+```
+
+```{r}
+reli_na$prp_plus_65<- reli_na$prp_p6569 + reli_na$prp_p7074 + reli_na$prp_p7579 + reli_na$prp_p8084 + reli_na$prp_p8589 + reli_na$prp_p90m 
+reli_na$prp_tertiary_educ <- reli_na$prp_pfbac + reli_na$prp_pfmas + reli_na$prp_pfphd
+reli_na$prp_hhp4m <- reli_na$prp_hhp4p + reli_na$prp_hhp5p + reli_na$prp_hhp6mp
+reli_na$prp_adh40l <- reli_na$prp_adh0105 + reli_na$prp_adh0619 + reli_na$prp_adh2034 + reli_na$prp_adh3539
+```
+
+```{r}
+vars_socio <- c("inv_ciqmd",'inv_dmdrent','wo_tertiary_education','rpforeign','rpdens','rp65+','rad3primsec')
+length(vars_socio)
+vars_env <- c("d_grocery","d_hmarket","d_kiosk","d_pharma","d_smarket","d_store","d_resto","d_bank","d_admin","d_retire","d_security","d_educ","d_school_o","d_school_s","d_sport","d_dentist","d_medic","d_medic_b","d_medic_s","d_stop_tot","d_forest","d_lake","mean_carday","mean_carnight","mean_ndvi","mean_lst","nearest_center_walk","nearest_center_drive")
+vars_env_v2 <- c("d_forest","d_lake","mean_carday","mean_carnight","mean_ndvi","mean_lst")
+#Redundant groups
+act <- c("ad","adm","adf")
+occup <- c("ado","adom","adof","adfo","adfom","adfof","adpo","adpom","adpof")
+unemp <- c("adune","adunem","adunef")
+non_act <- c("nadfm","nadfmm","nadfmf","nadho","nadhom","nadhof","nadret","nadretm","nadretf","naddis","naddism","naddisf","nadoth","nadothm","nadothf")
+
+dmed <- c("d_medic","d_medic_b","d_medic_s")
+dmarket <- c("d_grocery","d_hmarket","d_kiosk","d_smarket")
+dschool <- c("d_school_s","d_school_o")
+dcenter <- c("nearest_center_drive","nearest_center_walk")
+groups_vars_env <- list(dschool, dmed, dmarket, dcenter)
+groups_vars_socio <- list(act,occup,unemp,non_act)
+vars_tot <- c(vars_socio,vars_env)
+nas <- c(vars_socio,vars_env)
+```
+
+```{r}
+#Redundant groups
+prp_act <- c("prp_ad","prp_adm","prp_adf")
+prp_occup <- c("prp_ado","prp_adom","prp_adof","prp_adfo","prp_adfom","prp_adfof","prp_adpo","prp_adpom","prp_adpof")
+prp_occup_v2 <- c("prp_ado","prp_adfo","prp_adpo")
+
+prp_unemp <- c("prp_adune","prp_adunem","prp_adunef")
+prp_non_act <- c("prp_nadfm","prp_nadfmm","prp_nadfmf","prp_nadho","prp_nadhom","prp_nadhof","prp_nadret","prp_nadretm","prp_nadretf","prp_naddis","prp_naddism","prp_naddisf","prp_nadoth","prp_nadothm","prp_nadothf")
+prp_non_act_v2 <- c("prp_nadfm","prp_nadho")
+
+prp_groups_vars_socio <- list(prp_act,prp_occup,prp_unemp,prp_non_act)
+prp_groups_vars_socio_v2 <- list(prp_occup_v2,prp_non_act_v2)
+
+prp_vars_socio <- c("prp_p0004","prp_p0509","prp_p1014","prp_p1519","prp_p2024","prp_p2529","prp_p3034","prp_p3539","prp_p4044","prp_p4549","prp_p5054" ,"prp_p5559","prp_p6064","prp_p6569","prp_p7074","prp_p7579","prp_p8084","prp_p8589","prp_p90m","prp_pm","prp_pf","prp_pmssin","prp_pmswid","prp_pmsdiv","prp_pmsmar","prp_ptab","prp_ptsb","prp_pts01y","prp_pts14y","prp_pts59y","prp_pts10my","prp_ptafor","prp_ptach","prp_ptact","prp_pnnon","prp_pnch","prp_pnfor","prp_hhpriv","prp_hhfam","prp_hhp1p","prp_hhp2p","prp_hhp3p","prp_hhp4p","prp_hhp5p","prp_hhp6mp","prp_phhpriv","prp_ad","prp_adm","prp_adf","prp_ado","prp_adom","prp_adof","prp_adfo","prp_adfom","prp_adfof","prp_adpo","prp_adpom","prp_adpof","prp_adune","prp_adunem","prp_adunef","prp_adh0105","prp_adh0619","prp_adh2034","prp_adh3539","prp_adh4044","prp_adh4549","prp_adh50m","prp_nadfm","prp_nadfmm","prp_nadfmf","prp_nadho","prp_nadhom","prp_nadhof","prp_nadret","prp_nadretm" ,"prp_nadretf","prp_naddis","prp_naddism","prp_naddisf","prp_nadoth","prp_nadothm","prp_nadothf","prp_adcprod","prp_adcserv","prp_adccare","prp_adcprof","prp_adcedu","prp_adccrea","prp_pfnone","prp_pfobl","prp_pfgen","prp_pfprof","prp_pfmat","prp_pfprsf","prp_pfprss","prp_pfbac","prp_pfmas","prp_pfphd","prp_pfs","prp_pfpres","prp_plocfra","prp_plocchoth","prp_plocoth","iqmd","iq10","iq75")
+
+prp_vars_socio_v2 <- c("prp_pmssin","prp_pnch","prp_hhpriv","prp_hhfam","prp_hhp4m","prp_ad","prp_ado","prp_adfo","prp_adpo","prp_adune","prp_adh40l","prp_nadfm","prp_nadho","prp_adcprod","prp_adcserv","prp_adccare","prp_adcprof","prp_adcedu","prp_adccrea","prp_pfnone","prp_pfobl","prp_pfgen","prp_pfprof","prp_pfmat","prp_pfprsf","prp_pfprss","prp_tertiary_educ","iqmd")
+prp_groups_vars <- list(prp_act,prp_occup,prp_unemp,prp_non_act,dmed,dmarket)
+prp_groups_vars_v2 <- list(prp_occup_v2, prp_non_act_v2,dmed,dmarket)
+
+prp_vars_tot <- c(prp_vars_socio_v2,vars_env)
+
+```
+
+```{r}
+reli_na_socio <- reli_na %>% select(all_of(vars_socio))
+
+# reli_na_socio_sample <- sample_n(reli_na_socio, 10000)
+```
+
+
+```{r}
+# Index socio
+# v1
+index_socio <- SesIndex(reli_na_socio,varnames=vars_socio,sup=NULL,method="PCA",step="all")
+# v2
+index_socio_class <- SesClassif(index_socio,nb=5,method="HC")
+reli_na$index_socio <- index_socio_class$table$`SES Index`
+reli_na$index_socio_stand <- index_socio_class$table$`Standardized SES Index`
+reli_na$index_socio_class <- index_socio_class$table$`Classes`
+```
+```{r}
+index_socio$step3$analysis$ind$coord
+index_socio_$step3$indices
+```
+
+```{r}
+corrplot(index_socio_v2$step2$analysis$var$contrib, is.corr=FALSE)    
+fviz_cos2(index_socio_v2$step2$analysis, choice = "var", axes = 1)
+```
+
+```{r}
+cos2_pca_step3 <- data.frame(index_socio$step3$analysis$var$cos2)
+highest_10_cos2_step3 <- head(cos2_pca_step3[order(-cos2_pca_step3$Dim.1),], 10)
+fviz_cos2(index_socio$step3$analysis, choice = "var", axes = 1)
+```
+```{r}
+fviz_eig(index_socio_v2$step3$analysis, addlabels = TRUE, ylim = c(0, 50))
+```
+
+
+```{r}
+corrplot(index_socio_v2$step3$analysis$var$cor, is.corr=FALSE)    
+```
+
+```{r}
+fviz_pca_var(index_socio_v2$step3$analysis, col.var = "black")
+```
+
+```{r}
+plot(index_socio_class)
+
+col.gr <- rainbow(length(unique(index_socio_class$table$`Classes`)))[index_socio_class$table$`Classes`]
+plot(index_socio_v2$step3$analysis, col_ind = col.gr)
+```
+```{r}
+index_env_class$table$`SES Index`
+```
+
+```{r}
+#Index Env
+index_env <- SesIndex(reli_na_env,varnames=vars_env,groupvarnames=groups_vars_env,sup=NULL,method="PCA",step="all")
+index_env_class <- SesClassif(index_env,nb=5,method="quantiles")
+reli_na$index_env <- index_env_class$table$`SES Index`
+reli_na$index_env_stand <- index_env_class$table$`Standardized SES Index`
+reli_na$index_env_class <- index_env_class$table$`Classes`
+
+#Index Env v2
+index_env_v2 <- SesIndex(reli_na_env,varnames=vars_env_v2,sup=NULL,method="PCA",step="all")
+reli_na$index_env_v2_pca <- index_env_v2$step3$analysis$ind$coord[, c('Dim.1')]
+
+#Index all
+index_all <- SesIndex(reli_na_all,varnames=prp_vars_tot,groupvarnames=prp_groups_vars_v2,sup=NULL,method="PCA",step="all")
+index_all_class <- SesClassif(index_all, nb=5, method="quantiles")
+reli_na$index_all <- index_env_class$table$`SES Index`
+reli_na$index_all_stand <- index_all_class$table$`Standardized SES Index`
+reli_na$index_all_class <- index_all_class$table$`Classes`
+```
+
+
+```{r}
+reli_na$index_socio_pca1 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.1')]
+reli_na$index_socio_pca2 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.2')]
+reli_na$index_socio_pca3 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.3')]
+reli_na$index_socio_pca4 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.4')]
+reli_na$index_socio_pca5 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.5')]
+reli_na$index_socio_pca6 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.6')]
+reli_na$index_socio_pca7 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.7')]
+reli_na$index_socio_pca8 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.8')]
+reli_na$index_socio_pca9 <- index_socio_v2$step3$analysis$ind$coord[, c('Dim.9')]
+
+reli_na$index_env_pca1 <- index_env$step3$analysis$ind$coord[, c('Dim.1')]
+reli_na$index_env_pca2 <- index_env$step3$analysis$ind$coord[, c('Dim.2')]
+reli_na$index_env_pca3 <- index_env$step3$analysis$ind$coord[, c('Dim.3')]
+reli_na$index_env_pca4 <- index_env$step3$analysis$ind$coord[, c('Dim.4')]
+reli_na$index_env_pca5 <- index_env$step3$analysis$ind$coord[, c('Dim.5')]
+reli_na$index_env_pca6 <- index_env$step3$analysis$ind$coord[, c('Dim.6')]
+reli_na$index_env_pca7 <- index_env$step3$analysis$ind$coord[, c('Dim.7')]
+reli_na$index_env_pca8 <- index_env$step3$analysis$ind$coord[, c('Dim.8')]
+reli_na$index_env_pca9 <- index_env$step3$analysis$ind$coord[, c('Dim.9')]
+reli_na$index_env_pca10 <- index_env$step3$analysis$ind$coord[, c('Dim.10')]
+
+reli_na$index_env_v2_pca1 <- index_env_v2$step3$analysis$ind$coord[, c('Dim.1')]
+reli_na$index_env_v2_pca2 <- index_env_v2$step3$analysis$ind$coord[, c('Dim.2')]
+reli_na$index_env_v2_pca3 <- index_env_v2$step3$analysis$ind$coord[, c('Dim.3')]
+
+
+
+reli_na$index_all_pca1 <- index_all$step3$analysis$ind$coord[, c('Dim.1')]
+reli_na$index_all_pca2 <- index_all$step3$analysis$ind$coord[, c('Dim.2')]
+reli_na$index_all_pca3 <- index_all$step3$analysis$ind$coord[, c('Dim.3')]
+reli_na$index_all_pca4 <- index_all$step3$analysis$ind$coord[, c('Dim.4')]
+reli_na$index_all_pca5 <- index_all$step3$analysis$ind$coord[, c('Dim.5')]
+reli_na$index_all_pca6 <- index_all$step3$analysis$ind$coord[, c('Dim.6')]
+reli_na$index_all_pca7 <- index_all$step3$analysis$ind$coord[, c('Dim.7')]
+reli_na$index_all_pca8 <- index_all$step3$analysis$ind$coord[, c('Dim.8')]
+reli_na$index_all_pca9 <- index_all$step3$analysis$ind$coord[, c('Dim.9')]
+reli_na$index_all_pca10 <- index_all$step3$analysis$ind$coord[, c('Dim.10')]
+
+```
+
+```{r}
+corrplot(index_env_v2$step3$analysis$var$cor, is.corr=FALSE)    
+
+```
+```{r}
+fviz_eig(index_env$step3$analysis, addlabels = TRUE, ylim = c(0, 70))
+
+```
+
+```{r}
+fviz_eig(index_env_v2$step3$analysis, addlabels = TRUE, ylim = c(0, 70))
+```
+```{r}
+corrplot(index_env$step3$analysis$var$cor, is.corr=FALSE)    
+
+```
+
+```{r}
+write_feather(reli_na, './Data/Clean/reli_env_dgsc_correctedindices.feather')
+```
+

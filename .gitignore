@@ -1,0 +1,14 @@
+*.DS_Store
+#Ignore data folder for privacy protection
+Data/
+#Ignore results folder
+Results/
+Manuscript/
+Miscellaneous/
+*.pyc
+__pycache__/
+*.ipynb_checkpoints
+.Rproj.user
+.Rhistory
+.Rproj
+*.pyc
