@@ -216,7 +216,9 @@ in Geneva, Switzerland. [Journal details to be added upon publication]
 
 ## License
 
-[To be determined - please specify your preferred license]
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+The code is freely available for use, modification, and distribution. However, please note that the underlying screening data is subject to privacy regulations and cannot be publicly shared.
 
 ## Contact
 
