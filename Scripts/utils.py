@@ -4,6 +4,10 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 from matplotlib import patches, colors
+import matplotlib.patches as mpatches
+from matplotlib_scalebar.scalebar import ScaleBar
+import matplotlib.patheffects as pe
+
 ## Misc functions
 
 
@@ -15,7 +19,7 @@ cantons = gpd.read_file(
 communes = gpd.read_file(
     '/Users/david/Dropbox/PhD/Data/Databases/SITG/SHAPEFILE_LV95_LN02/swissBOUNDARIES3D_1_3_TLM_HOHEITSGEBIET.shp')
 communes = communes[communes.KANTONSNUM == 25]
-
+communes = communes.to_crs(2056)
 
 def show_values(axs, orient="v", digits=2, fontsize=8, space=0.05):
     """
@@ -85,7 +89,7 @@ def translate_cat(col, lang):
         'FR': {
             'Nouveau point chaud': 'New hot spot',
             'Point chaud consécutif': 'Consecutive hot spot',
-            'Intensification de point chaud': 'Hot spot intensification',
+            'Intensification de point chaud': 'Intensifying hot spot',
             'Point chaud persistant': 'Persistent hot spot',
             'Point chaud diminuant': 'Diminishing hot spot',
             'Point chaud sporadique': 'Sporadic hot spot',
@@ -93,7 +97,7 @@ def translate_cat(col, lang):
             'Point chaud historique': 'Historical hot spot',
             'Nouveau point froid': 'New cold spot',
             'Point froid consécutif': 'Consecutive cold spot',
-            'Intensification de point froid': 'Cold spot intensification',
+            'Intensification de point froid': 'Intensifying cold spot',
             'Point froid persistant': 'Persistent cold spot',
             'Point froid diminuant': 'Diminishing cold spot',
             'Point froid sporadique': 'Sporadic cold spot',
@@ -104,7 +108,7 @@ def translate_cat(col, lang):
         'EN': {
             'Nouveau point chaud': 'New hot spot',
             'Point chaud consécutif': 'Consecutive hot spot',
-            'Intensification de point chaud': 'Hot spot intensification',
+            'Intensification de point chaud': 'Intensifying hot spot',
             'Point chaud persistant': 'Persistent hot spot',
             'Point chaud diminuant': 'Diminishing hot spot',
             'Point chaud sporadique': 'Sporadic hot spot',
@@ -112,7 +116,7 @@ def translate_cat(col, lang):
             'Point chaud historique': 'Historical hot spot',
             'Nouveau point froid': 'New cold spot',
             'Point froid consécutif': 'Consecutive cold spot',
-            'Intensification de point froid': 'Cold spot intensification',
+            'Intensification de point froid': 'Intensifying cold spot',
             'Point froid persistant': 'Persistent cold spot',
             'Point froid diminuant': 'Diminishing cold spot',
             'Point froid sporadique': 'Sporadic cold spot',
@@ -158,7 +162,7 @@ colors_cl_getis_en = {
 'No pattern detected': '#f0f0f0'
 }
 
-def masked_emergent_getis(gdf, gdf_centre, category, dict_cl):
+def masked_emergent_getis(gdf, gdf_centre, category, dict_cl, labels):
     fig, ax = plt.subplots(figsize=(12, 12))
 
     mask_quadrant = ~(gdf['class'] == category)
@@ -166,23 +170,52 @@ def masked_emergent_getis(gdf, gdf_centre, category, dict_cl):
     df_quadrant = gdf[~mask_quadrant]
     union2 = df_quadrant.unary_union.boundary
     communes.plot(color = 'lightgrey', ax = ax, zorder = 1)
-    lake.plot(color = 'lightblue',ax = ax, zorder = 2)
+    # communes.boundary.plot(color = 'black', linewidth=0.2, ax = ax, zorder = 1)
+    # Add Geneva city boundary and annotation
+    # geneva_city = communes[communes.NAME == 'Genève']
+    # geneva_city.boundary.plot(ax=ax, color='black', linewidth=0.8, zorder = 3)
+    communes_to_map = gpd.sjoin(communes, df_quadrant[['geometry']], predicate='intersects', how = 'left')
+    communes_to_map = communes_to_map[communes_to_map.nbid.isnull()==False]
+    communes_to_map.boundary.plot(ax=ax, color='black', linewidth=0.6, zorder = 5)
+    # communes_to_map.apply(lambda x: ax.annotate(text=x.NAME, xy=x.geometry.centroid.coords[0], ha='center', size=10, alpha = 0.6, zorder=7), axis=1)
+    communes_to_map.loc[communes_to_map.NAME == 'Genève','NAME'] = 'Geneva'
+    communes_to_map.apply(lambda x: ax.annotate(text=x.NAME, 
+                                               xy=x.geometry.centroid.coords[0],
+                                               ha='center',
+                                               size=7,
+                                               zorder=99,
+                                               path_effects=[
+                                                   pe.withStroke(linewidth=2, foreground='white')
+                                               ]),
+                          axis=1)
+
+    # Add Geneva city label at centroid
+    # centroid = geneva_city.geometry.centroid.iloc[0]
+    # ax.annotate('Geneva', xy=(centroid.x, centroid.y), fontsize=12, fontweight='bold', 
+    #             ha='center', va='center', zorder = 5)
+    lake.plot(color = 'lightblue',ax = ax, zorder = 7)
+    lake.apply(lambda x: ax.annotate(text=x.NOM, xy=x.geometry.centroid.coords[0], ha='center', size=12, alpha = 0.8, zorder=8), axis=1)
+
     hmap = colors.ListedColormap([dict_cl[i] for i in gdf['class'].sort_values().unique()])
     y = gdf['class'] + ' [' + gdf['class'].map(gdf['class'].value_counts()).astype(str) + ']'
     with warnings.catch_warnings():  # temorarily surpress geopandas warning
         warnings.filterwarnings('ignore', category=UserWarning)
-        gdf.plot(y, linewidth = 0.01, cmap = hmap, ax=ax, alpha=1, zorder=1, legend = True, legend_kwds = {'title':'Categories [n hectares]','loc':'upper left','fontsize':12})
+        gdf.plot(y, linewidth = 0.01, cmap = hmap, ax=ax, alpha=1, zorder=1, legend = False)
         non_quadrant.plot(color = 'white',alpha = 0.9,linewidth=0, zorder = 4, ax = ax)
     gpd.GeoSeries([union2]).plot(linewidth=0.3, ax=ax, color='black', zorder = 4)
-    # communes.apply(lambda x: ax.annotate(text=x.NAME, xy=x.geometry.centroid.coords[0], ha='center', size=6, alpha = 0.8, zorder = 5), axis=1)
-    lake.apply(lambda x: ax.annotate(text=x.NOM, xy=x.geometry.centroid.coords[0], ha='center', size=12, alpha = 0.8), axis=1)
-    gdf_centre.plot(c = '#31a354', markersize = 25, alpha = 0.8, marker = 'x', ax = ax, zorder = 6)
+    gdf_centre.plot(c = '#31a354', markersize = 40, alpha = 0.8, marker = 'x', ax = ax, zorder = 6)
     ax.set_axis_off()
-    legend = ax.get_legend()
-    # Change the fontsize
-    legend.get_title().set_fontsize('12')  # You can adjust the number to increase or decrease the size
+    custom_patch = [mpatches.Patch(color=dict_cl[category], label=labels[category])]
+    custom_patch.append(plt.Line2D([0], [0], marker='x', color='#31a354', linestyle='None', 
+                                 markersize=10, markeredgewidth=3, label='Breast screening centers'))
+    # Create the custom legend with the patch
+    ax.legend(handles=custom_patch, title='Categories - N women (%)', fontsize=10, title_fontsize = 12, loc='upper left')
+    # Add screening centers to legend
 
-    ax.set_title(category, size = 16)
+
+    scalebar = ScaleBar(1, units="m", location="lower right")
+    ax.add_artist(scalebar)
+    # ax.set_title(category, size = 16)
     return fig, ax
 
 def pca_map(X,PC_a, PC_b, figsize=(10,10), sup="", print_values= False):
